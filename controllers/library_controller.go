@@ -29,7 +29,9 @@ func StartLibraryConsole() {
 		fmt.Println("4. Return Book")
 		fmt.Println("5. List Available Books")
 		fmt.Println("6. List Borrowed Books by Member")
-		fmt.Println("7. Exit")
+		fmt.Println("7. Add New Memeber")
+		fmt.Println("8. Reserve Book")
+		fmt.Println("9. Exit")
 		fmt.Println("Choose an option: ")
 
 		var choice int
@@ -48,11 +50,13 @@ func StartLibraryConsole() {
 			author = strings.TrimSpace(author)
 			book := models.Book{ID: id, Title: title, Author: author, Status: "Available"}
 			library.AddBook(book)
+			fmt.Println("Book Added successfully!")
 		case 2:
 			var id int
 			fmt.Print("Book ID to remove: ")
 			fmt.Scanln(&id)
 			library.RemoveBook(id)
+			fmt.Println("Book removed successfully!")
 		
 		case 3:
 			bookID, memberID := ReciveIDs()
@@ -70,12 +74,12 @@ func StartLibraryConsole() {
 			 }else{
 				fmt.Println("Book returned successfully!")
 			 }
-			case 5:
+		case 5:
 				fmt.Println("\nAvailable Books:")
 				for _, b := range library.ListAvailableBooks(){
 					fmt.Printf("ID: %d , Title: %s , Author: %s , Status: %s\n", b.ID, b.Title, b.Author, b.Status)
 				}
-			case 6:
+		case 6:
 				var memberID int 
 				fmt.Print("Member ID: ")
 				fmt.Scanln(&memberID)
@@ -87,10 +91,30 @@ func StartLibraryConsole() {
 						fmt.Printf("ID: %d, Title: %s, Author: %s, Status: %s\n", b.ID,b.Title,b.Author, b.Status)
 					}
 				}
-			case 7:
+		case 7:
+				var memeberID int
+				fmt.Println("Enter MemberID:")
+				fmt.Scanln(&memeberID)
+				fmt.Println("Enter Member Name")
+				name, _:= reader.ReadString('\n')
+				name = strings.TrimSpace(name)
+				fmt.Scanln(&name)
+				library.AddMember(memeberID,name)
+				fmt.Println("Member added successfully!")
+			
+		case 8:
+				fmt.Println("Reserve Book")
+				bookID, memberID := ReciveIDs()
+				err := library.ReserveBook(bookID,memberID)
+				if err != nil{
+					fmt.Println("Error:", err)
+				}
+
+		case 9:
 				fmt.Println("Exiting... Goodbye!")
 				return
-			default:
+
+		default:
 				fmt.Println("Invalid choice, try again")
 		}
 	}

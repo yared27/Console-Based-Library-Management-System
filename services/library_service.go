@@ -4,7 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"library_management/models"
+	"sync"
+	"library_management/concurrency"
 )
+
+// type ReservationRequest struct {
+// 	BookID   int
+// 	MemberID int
+// }
 
 type LibraryManager interface {
 	AddBook(book models.Book)
@@ -13,18 +20,26 @@ type LibraryManager interface {
 	ReturnBook(bookID int, memberID int) error
 	ListAvailableBooks() []models.Book
 	ListBorrowedBooks(memberID int) []models.Book
+	ReserveBook(bookID, memberID int) error
+	AddMember(memberID int,Name string) 
 }
 
 type Library struct {
 	Books   map[int]models.Book
 	Members map[int]models.Member
+
+	mu      sync.Mutex
+	Reserve chan concurrency.ReservationRequest
 }
 
 func NewLibrary() *Library {
-	return &Library{
+	l := &Library{
 		Books:   make(map[int]models.Book),
 		Members: make(map[int]models.Member),
+		Reserve: make(chan concurrency.ReservationRequest, 100),
 	}
+	concurrency.StartReservationWorker(l.Reserve, l.Books, &l.mu)
+	return l
 }
 
 // addbook adds a new book to the library
@@ -95,11 +110,11 @@ func (l *Library) ReturnBook(bookID int, memberID int) error {
 	return nil
 }
 
-func (l *Library) ListAvailableBooks()[]models.Book{
+func (l *Library) ListAvailableBooks() []models.Book {
 	available := []models.Book{}
 
-	for _, book := range l.Books{
-		if book.Status == "Available"{
+	for _, book := range l.Books {
+		if book.Status == "Available" {
 			available = append(available, book)
 		}
 	}
@@ -107,11 +122,37 @@ func (l *Library) ListAvailableBooks()[]models.Book{
 
 }
 
-func (l *Library) ListBorrowedBooks(memberID int)[]models.Book{
+func (l *Library) ListBorrowedBooks(memberID int) []models.Book {
 	member, exists := l.Members[memberID]
-	if !exists{
+	if !exists {
 		fmt.Println("Member not found!")
 		return nil
 	}
 	return member.BorrowedBooks
+}
+
+
+func (l *Library) ReserveBook(bookID, memberID int) error {
+	if _, exists := l.Books[bookID]; !exists {
+		return fmt.Errorf("book with ID %d does not exist", bookID)
+	}
+
+	if _, exists := l.Members[memberID]; !exists {
+		return fmt.Errorf("Memeber with ID %d does not exists", memberID)
+	}
+
+	// send reservation request to the channel (non-blocking)
+
+	go func() {
+		l.Reserve <- concurrency.ReservationRequest{BookID: bookID, MemberID: memberID}
+	}()
+	return nil
+}
+
+func (l*Library) AddMember(memberID int,name string){
+	l.Members[memberID] = models.Member{
+		ID: memberID,
+		Name: name,
+	}
+	fmt.Printf("Member '%s' added with ID %d\n", name, memberID)
 }
